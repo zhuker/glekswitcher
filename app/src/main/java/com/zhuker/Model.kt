@@ -1,12 +1,24 @@
 package com.zhuker
 
 import com.google.gson.Gson
+import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.sse.EventSource
+import okhttp3.sse.EventSourceListener
+import okhttp3.sse.EventSources
+import java.io.IOException
 import java.lang.StringBuilder
 import java.net.Socket
 import java.util.*
 
 fun ByteArray.drop4(limit: Int? = null): ByteArray = this.sliceArray(IntRange(4, (limit ?: this.size) - 1))
+
+data class GateEvent(val id: String?, val type: String?, val data: String)
+class SSEException(err: Throwable?, val response: Response?) : java.lang.RuntimeException(err)
+data class GateStatus(val id: String, val state: String, val value: Boolean)
 
 object Model {
     const val payload_query = "AAAAI9Dw0qHYq9+61/XPtJS20bTAn+yV5o/hh+jK8J7rh+vLtpbr"
@@ -14,6 +26,7 @@ object Model {
     const val payload_off = "AAAAKtDygfiL/5r31e+UtsWg1Iv5nPCR6LfEsNGlwOLYo4HyhueT9tTu3qPeow=="
     const val lights_ip_addr = "192.168.1.192"
     const val lights_port = 9999
+    const val gate_ip = "192.168.1.244"
 
     fun rxmsg(q: ByteArray): Single<ByteArray> {
         return Single.create { emitter ->
@@ -60,6 +73,67 @@ object Model {
         return rxmsg(Base64.getDecoder().decode(payload_off)).map {
             val s = decode(it.drop4())
             gson.fromJson(s, SwitchStatus::class.java)
+        }
+    }
+
+    private val client = OkHttpClient()
+
+    fun gateEvents(): Observable<GateEvent> {
+        return Observable.create { emitter ->
+            val newEventSource = EventSources.createFactory(client)
+                .newEventSource(
+                    Request.Builder().url("http://$gate_ip:80/events").build(),
+                    object : EventSourceListener() {
+                        override fun onOpen(eventSource: EventSource, response: Response) {
+                            super.onOpen(eventSource, response)
+//                            println("onOpen")
+                        }
+
+                        override fun onClosed(eventSource: EventSource) {
+                            super.onClosed(eventSource)
+//                            println("onClosed")
+                            emitter.onComplete()
+                        }
+
+                        override fun onEvent(eventSource: EventSource, id: String?, type: String?, data: String) {
+                            super.onEvent(eventSource, id, type, data)
+//                            println("onEvent '$id' '$type' '$data'")
+                            emitter.onNext(GateEvent(id, type, data))
+                        }
+
+                        override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
+                            super.onFailure(eventSource, t, response)
+//                            println("onFailure $t $response")
+                            emitter.onError(SSEException(t, response))
+                        }
+                    })
+            emitter.setCancellable {
+                newEventSource.cancel()
+            }
+        }
+    }
+
+    fun gateStatus(): Observable<GateStatus> {
+        return gateEvents().filter { it.type == "state" }.map { gson.fromJson(it.data, GateStatus::class.java)!! }
+    }
+
+    fun toggleGate(): Single<Response> {
+        return Single.create { emitter ->
+            val req = Request.Builder().url("http://$gate_ip/switch/gateonclosed/toggle")
+                .method("POST", "".toRequestBody("text/plain".toMediaType())).build()
+            val newCall = client.newCall(req)
+            newCall.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    emitter.onError(e)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    emitter.onSuccess(response)
+                }
+            })
+            emitter.setCancellable {
+                newCall.cancel()
+            }
         }
     }
 }

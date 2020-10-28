@@ -13,16 +13,29 @@ import java.util.concurrent.TimeUnit.SECONDS
 
 
 class MainActivity : AppCompatActivity() {
-    private fun onError(err: Throwable) {
+    private fun onLightsError(err: Throwable) {
         progressBar.visibility = INVISIBLE
         lights.isEnabled = false
+        lights.isClickable = false
         Log.e(TAG, "error reading status $err")
     }
 
-    private fun onStatusUpdated(status: SwitchStatus) {
+    private fun onLightsUpdated(status: SwitchStatus) {
         lights.isEnabled = true
+        lights.isClickable = true
         progressBar.visibility = INVISIBLE
         lights.isChecked = status.isOn()
+        lights.text = if (status.isOn()) "Lights ON" else "Lights OFF"
+    }
+
+    private fun onGateUpdated(gateStatus: GateStatus) {
+        //D/GlekSwitcher: gate GateStatus(id=switch-gateonclosed, state=OFF, value=false)
+        //D/GlekSwitcher: gate GateStatus(id=switch-gateonclosed, state=ON, value=true)
+        progressBar.visibility = INVISIBLE
+        gate.isEnabled = true
+        gate.isClickable = true
+        gate.isChecked = gateStatus.value
+        gate.text = if (gateStatus.value) "Gate CLOSED" else "Gate OPEN"
     }
 
     private val subs = CompositeDisposable()
@@ -40,15 +53,31 @@ class MainActivity : AppCompatActivity() {
                 .flatMap { Model.query() }
                 .timeout(4, SECONDS)
                 .subscribeOn(io()).observeOn(mainThread())
-                .subscribe({ onStatusUpdated(it) }, { onError(it) })
+                .subscribe({ onLightsUpdated(it) }, { onLightsError(it) })
             subs.add(subscribe)
         }
-        val sub = Model.query().timeout(2, SECONDS).subscribeOn(io()).observeOn(mainThread()).subscribe({
-            onStatusUpdated(it)
+        val lightsSub = Model.query().timeout(2, SECONDS).subscribeOn(io()).observeOn(mainThread()).subscribe({
+            onLightsUpdated(it)
         }, {
-            onError(it)
+            onLightsError(it)
         })
-        subs.add(sub)
+        subs.add(lightsSub)
+
+        val gatesSub =
+            Model.gateStatus().filter { it.id == "switch-gateonclosed" }.subscribeOn(io()).observeOn(mainThread())
+                .subscribe({
+                    Log.d(TAG, "gate $it")
+                    onGateUpdated(it)
+                }, { Log.e(TAG, "gate error $it") })
+
+        gate.setOnClickListener {
+            progressBar.visibility = VISIBLE
+            val toggleSub =
+                Model.toggleGate().subscribe({ Log.d(TAG, "gate toggle ok") }, { Log.e(TAG, "gate toggle error $it") })
+            subs.add(toggleSub)
+        }
+
+        subs.add(gatesSub)
     }
 
     override fun onDestroy() {

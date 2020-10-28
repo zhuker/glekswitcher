@@ -30,7 +30,7 @@ data class SysInfo(
 
 data class SetRelayState(val err_code: Int)
 
-data class System(val get_sysinfo: SysInfo?, val set_relay_state: SetRelayState?)
+data class System(val get_sysinfo: SysInfo? = null, val set_relay_state: SetRelayState? = null)
 
 data class SwitchStatus(val system: System) {
     fun isOn(): Boolean = (system.get_sysinfo?.relay_state ?: 0) != 0
