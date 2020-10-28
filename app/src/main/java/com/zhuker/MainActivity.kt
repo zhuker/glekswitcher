@@ -33,6 +33,7 @@ class MainActivity : AppCompatActivity() {
         progressBar.visibility = VISIBLE
         subs.clear()
         lights.setOnClickListener {
+            subs.clear()
             progressBar.visibility = VISIBLE
             val subscribe = Model.query()
                 .flatMap { if (it.isOn()) Model.turnOff() else Model.turnOn() }
