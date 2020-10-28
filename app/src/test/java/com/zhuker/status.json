@@ -1,0 +1,34 @@
+{
+  "system": {
+    "get_sysinfo": {
+      "sw_ver": "1.5.3 Build 180604 Rel.085451",
+      "hw_ver": "2.0",
+      "mic_type": "IOT.SMARTPLUGSWITCH",
+      "model": "HS200(US)",
+      "mac": "0C:80:63:C3:2B:03",
+      "dev_name": "Smart Wi-Fi Light Switch",
+      "alias": "garage entry light",
+      "relay_state": 0,
+      "on_time": 0,
+      "active_mode": "schedule",
+      "feature": "TIM",
+      "updating": 0,
+      "icon_hash": "",
+      "rssi": -37,
+      "led_off": 0,
+      "longitude_i": -1222701,
+      "latitude_i": 374699,
+      "hwId": "12657950800085A27A64E9E775C8A7A7",
+      "fwId": "00000000000000000000000000000000",
+      "deviceId": "8006611F152669B5E1B5A34AC7FD5CA51A96928D",
+      "oemId": "4748FB6E209D782A854A4B5AEDC89284",
+      "next_action": {
+        "type": 1,
+        "id": "2299713CF2E3051015D80BC120A89408",
+        "schd_sec": 81000,
+        "action": 0
+      },
+      "err_code": 0
+    }
+  }
+}
