@@ -1,6 +1,8 @@
 package com.zhuker
 
+import android.util.Log
 import com.google.gson.Gson
+import com.zhuker.MainActivity.Companion.TAG
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
 import okhttp3.*
@@ -103,8 +105,11 @@ object Model {
 
                         override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
                             super.onFailure(eventSource, t, response)
-//                            println("onFailure $t $response")
-                            emitter.onError(SSEException(t, response))
+                            if (!emitter.isDisposed) {
+                                emitter.onError(SSEException(t, response))
+                            } else {
+                                Log.e(TAG, "gate event error $t")
+                            }
                         }
                     })
             emitter.setCancellable {
