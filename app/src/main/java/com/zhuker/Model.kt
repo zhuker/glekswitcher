@@ -124,7 +124,7 @@ object Model {
 
     fun toggleGate(): Single<Response> {
         return Single.create { emitter ->
-            val req = Request.Builder().url("http://$gate_ip/switch/gateonclosed/toggle")
+            val req = Request.Builder().url("http://$gate_ip/switch/open_for_30min/toggle")
                 .method("POST", "".toRequestBody("text/plain".toMediaType())).build()
             val newCall = client.newCall(req)
             newCall.enqueue(object : Callback {
